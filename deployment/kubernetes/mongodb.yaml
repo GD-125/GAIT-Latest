@@ -1,0 +1,75 @@
+# File: deployment/kubernetes/mongodb.yaml
+# MongoDB deployment for Kubernetes
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fe-ai-mongodb
+  namespace: fe-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fe-ai-mongodb
+  template:
+    metadata:
+      labels:
+        app: fe-ai-mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:5.0
+        ports:
+        - containerPort: 27017
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          value: admin
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fe-ai-secrets
+              key: mongo-password
+        - name: MONGO_INITDB_DATABASE
+          value: fe_ai_system
+        volumeMounts:
+        - name: mongodb-data
+          mountPath: /data/db
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+      volumes:
+      - name: mongodb-data
+        persistentVolumeClaim:
+          claimName: mongodb-data-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fe-ai-mongodb
+  namespace: fe-ai
+spec:
+  selector:
+    app: fe-ai-mongodb
+  ports:
+  - port: 27017
+    targetPort: 27017
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mongodb-data-pvc
+  namespace: fe-ai
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: fast-ssd

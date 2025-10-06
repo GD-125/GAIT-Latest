@@ -1,0 +1,10 @@
+# File: deployment/kubernetes/namespace.yaml
+# Kubernetes namespace for FE-AI
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fe-ai
+  labels:
+    name: fe-ai
+    purpose: medical-ai-system

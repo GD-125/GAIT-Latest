@@ -1,0 +1,19 @@
+# File: deployment/kubernetes/service.yaml
+# Kubernetes service for FE-AI
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: fe-ai-service
+  namespace: fe-ai
+  labels:
+    app: fe-ai-app
+spec:
+  selector:
+    app: fe-ai-app
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8501
+    protocol: TCP
+  type: ClusterIP

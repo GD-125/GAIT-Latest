@@ -1,0 +1,797 @@
+# File: config.yaml
+# FE-AI System Configuration
+
+# Application Settings
+app:
+  name: "FE-AI Gait Disease Detection"
+  version: "2.3.1"
+  environment: "production"  # development, staging, production
+  debug: false
+  secret_key: "fe-ai-secure-key-change-in-production"
+
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8501
+  max_upload_size: 100  # MB
+  session_timeout: 7200  # seconds
+  enable_cors: true
+  ssl_enabled: false
+  ssl_cert_path: "/certs/cert.pem"
+  ssl_key_path: "/certs/key.pem"
+
+# Model Configuration
+models:
+  gait_detector:
+    architecture: "CNN-BiLSTM"
+    confidence_threshold: 0.8
+    sequence_length: 250
+    input_dim: 6
+    cnn_filters: 64
+    lstm_units: 128
+    dropout_rate: 0.3
+    model_path: "data/models/gait_detector_v2.1.pth"
+    
+  disease_classifier:
+    transformer:
+      input_dim: 247
+      d_model: 512
+      nhead: 8
+      num_layers: 6
+      dim_feedforward: 2048
+      dropout: 0.1
+      num_classes: 5
+      max_len: 100
+    xgboost:
+      n_estimators: 1000
+      max_depth: 6
+      learning_rate: 0.1
+      subsample: 0.8
+      colsample_bytree: 0.8
+      reg_alpha: 0.1
+      reg_lambda: 1.0
+      random_state: 42
+    ensemble_weight: 0.7  # Transformer weight in ensemble
+    model_path: "data/models/disease_classifier_v2.1.pkl"
+
+# Federated Learning Configuration
+federated_learning:
+  enabled: true
+  server_address: "0.0.0.0:8080"
+  num_rounds: 50
+  min_fit_clients: 3
+  min_evaluate_clients: 2
+  min_available_clients: 3
+  epochs_per_round: 5
+  batch_size: 32
+  learning_rate: 0.001
+  privacy_budget: 1.0
+  aggregation_method: "FedAvg"  # FedAvg, FedProx, FedOpt
+  
+  # Privacy Settings
+  differential_privacy:
+    enabled: true
+    epsilon: 1.0
+    delta: 1e-5
+    max_grad_norm: 1.0
+    
+  secure_aggregation:
+    enabled: true
+    encryption_method: "AES256"
+    key_rotation_rounds: 10
+
+# Data Processing Configuration
+preprocessing:
+  sampling_rate: 50  # Hz
+  window_size: 5  # seconds
+  overlap_percentage: 25
+  normalization_method: "zscore"  # zscore, minmax, robust
+  
+  filters:
+    lowpass_freq: 20  # Hz
+    highpass_freq: 0.5  # Hz
+    filter_order: 4
+    filter_type: "butterworth"
+    
+  feature_extraction:
+    time_domain: true
+    frequency_domain: true
+    wavelet_domain: true
+    statistical_features: true
+
+# Database Configuration
+database:
+  type: "mongodb"  # mongodb, postgresql, sqlite
+  mongodb:
+    host: "localhost"
+    port: 27017
+    database: "fe_ai_system"
+    username: "${MONGO_USER}"
+    password: "${MONGO_PASSWORD}"
+    auth_database: "admin"
+    ssl_enabled: false
+    replica_set: null
+    
+  collections:
+    analyses: "analyses"
+    users: "users" 
+    models: "models"
+    logs: "system_logs"
+    feedback: "clinical_feedback"
+
+# Security Configuration
+security:
+  authentication:
+    enabled: true
+    method: "local"  # local, ldap, oauth2
+    session_duration: 7200  # seconds
+    max_login_attempts: 5
+    lockout_duration: 300  # seconds
+    
+  authorization:
+    rbac_enabled: true
+    default_role: "viewer"
+    roles:
+      admin: ["read", "write", "delete", "manage_users", "system_config"]
+      doctor: ["read", "write", "analyze", "export_reports"]
+      researcher: ["read", "analyze", "export_data"]
+      viewer: ["read"]
+      
+  encryption:
+    data_at_rest: true
+    data_in_transit: true
+    algorithm: "AES-256-GCM"
+    key_rotation_days: 90
+    
+  audit:
+    enabled: true
+    log_all_actions: true
+    retention_days: 365
+    export_format: "json"
+
+# Logging Configuration  
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  
+  handlers:
+    console:
+      enabled: true
+      level: "INFO"
+      
+    file:
+      enabled: true
+      level: "DEBUG"
+      path: "logs/"
+      max_size: "100MB"
+      backup_count: 5
+      
+    syslog:
+      enabled: false
+      host: "localhost"
+      port: 514
+      
+  loggers:
+    fe_ai:
+      level: "DEBUG"
+    federated:
+      level: "INFO"
+    security:
+      level: "WARNING"
+
+# Monitoring Configuration
+monitoring:
+  enabled: true
+  metrics_collection: true
+  health_check_interval: 30  # seconds
+  
+  alerts:
+    enabled: true
+    email_notifications: true
+    slack_notifications: false
+    
+  thresholds:
+    cpu_usage: 80  # percentage
+    memory_usage: 85  # percentage
+    disk_usage: 90  # percentage
+    response_time: 5000  # milliseconds
+    error_rate: 5  # percentage
+
+# Backup Configuration
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM (cron format)
+  retention_days: 30
+  compression: true
+  encryption: true
+  
+  targets:
+    database: true
+    models: true
+    logs: false
+    configurations: true
+    
+  storage:
+    type: "local"  # local, s3, azure, gcp
+    path: "backups/"
+
+# Cache Configuration
+cache:
+  enabled: true
+  type: "redis"  # redis, memcached, memory
+  
+  redis:
+    host: "localhost"
+    port: 6379
+    database: 0
+    password: "${REDIS_PASSWORD}"
+    ssl_enabled: false
+    
+  ttl:
+    analysis_results: 3600  # seconds
+    user_sessions: 7200  # seconds
+    model_predictions: 1800  # seconds
+
+# API Configuration
+api:
+  enabled: true
+  version: "v1"
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 60
+    burst_size: 10
+    
+  cors:
+    enabled: true
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "PUT", "DELETE"]
+    allowed_headers: ["*"]
+    
+  authentication:
+    api_keys: true
+    jwt_tokens: true
+    oauth2: false
+
+# Email Configuration
+email:
+  enabled: true
+  smtp_server: "smtp.gmail.com"
+  smtp_port: 587
+  username: "${EMAIL_USER}"
+  password: "${EMAIL_PASSWORD}"
+  use_tls: true
+  from_address: "noreply@fe-ai-system.com"
+  
+  templates:
+    welcome: "templates/welcome.html"
+    alert: "templates/alert.html"
+    report: "templates/report.html"
+
+# External Services
+external_services:
+  mlflow:
+    enabled: false
+    tracking_uri: "http://localhost:5000"
+    
+  wandb:
+    enabled: false
+    project: "fe-ai-gait-detection"
+    
+  sentry:
+    enabled: false
+    dsn: "${SENTRY_DSN}"
+
+# Development Settings
+development:
+  auto_reload: true
+  debug_mode: true
+  mock_data: false
+  skip_auth: false
+  profiling: false
+
+---
+
+# File: .gitignore
+# Git ignore file for FE-AI project
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+#   According to pypa/pipenv#598, it is recommended to include Pipfile.lock in version control.
+#   However, in case of collaboration, if having platform-specific dependencies or dependencies
+#   having no cross-platform support, pipenv may install dependencies that don't work, or not
+#   install all needed dependencies.
+#Pipfile.lock
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# FE-AI specific ignores
+# Data files
+data/raw/*
+data/processed/*
+!data/samples/
+data/models/*.pth
+data/models/*.pkl
+data/models/*.h5
+
+# Logs
+logs/
+*.log
+
+# Certificates and keys
+*.pem
+*.key
+*.cert
+*.csr
+secrets/
+
+# Configuration overrides
+config.local.yaml
+.env.local
+
+# Temporary files
+temp/
+tmp/
+cache/
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE specific
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Backup files
+*.bak
+*.backup
+backups/
+
+# Model artifacts
+wandb/
+mlruns/
+tensorboard_logs/
+
+# Docker
+.dockerignore
+
+# Kubernetes
+*.kubeconfig
+
+---
+
+# File: Dockerfile
+# Docker configuration for FE-AI system
+
+FROM python:3.9-slim
+
+# Set working directory
+WORKDIR /app
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV STREAMLIT_SERVER_HEADLESS=true
+ENV STREAMLIT_SERVER_ENABLE_CORS=false
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    libffi-dev \
+    libssl-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p logs data/raw data/processed data/models data/samples backups
+
+# Set proper permissions
+RUN chmod +x scripts/*.py
+
+# Create non-root user for security
+RUN groupadd -r feai && useradd -r -g feai -s /bin/bash feai
+RUN chown -R feai:feai /app
+USER feai
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8501/_stcore/health || exit 1
+
+# Expose ports
+EXPOSE 8501 8080
+
+# Default command
+CMD ["streamlit", "run", "main.py", "--server.port=8501", "--server.address=0.0.0.0"]
+
+---
+
+# File: docker-compose.yml
+# Docker Compose configuration for FE-AI system
+
+version: '3.8'
+
+services:
+  # Main FE-AI application
+  fe-ai-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fe-ai-app
+    ports:
+      - "8501:8501"
+      - "8080:8080"
+    environment:
+      - MONGO_USER=feai_user
+      - MONGO_PASSWORD=secure_password_123
+      - REDIS_PASSWORD=redis_password_123
+      - EMAIL_USER=noreply@fe-ai.com
+      - EMAIL_PASSWORD=email_password_123
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./backups:/app/backups
+      - ./config.yaml:/app/config.yaml:ro
+    depends_on:
+      - mongodb
+      - redis
+    networks:
+      - fe-ai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # MongoDB database
+  mongodb:
+    image: mongo:5.0
+    container_name: fe-ai-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin_password_123
+      - MONGO_INITDB_DATABASE=fe_ai_system
+    volumes:
+      - mongodb_data:/data/db
+      - ./scripts/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - fe-ai-network
+    restart: unless-stopped
+    command: mongod --auth
+
+  # Redis cache
+  redis:
+    image: redis:7-alpine
+    container_name: fe-ai-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass redis_password_123
+    volumes:
+      - redis_data:/data
+    networks:
+      - fe-ai-network
+    restart: unless-stopped
+
+  # Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: fe-ai-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deployment/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deployment/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - fe-ai-app
+    networks:
+      - fe-ai-network
+    restart: unless-stopped
+
+  # Federated Learning Server
+  fl-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.fl-server
+    container_name: fe-ai-fl-server
+    ports:
+      - "8080:8080"
+    environment:
+      - FL_SERVER_ADDRESS=0.0.0.0:8080
+      - FL_NUM_ROUNDS=50
+      - FL_MIN_CLIENTS=3
+    volumes:
+      - ./data/models:/app/data/models
+      - ./logs:/app/logs
+    networks:
+      - fe-ai-network
+    restart: unless-stopped
+    depends_on:
+      - fe-ai-app
+
+  # Monitoring with Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: fe-ai-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deployment/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - fe-ai-network
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: fe-ai-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin_password_123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./deployment/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./deployment/grafana/datasources:/etc/grafana/provisioning/datasources
+    networks:
+      - fe-ai-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  fe-ai-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+---
+
+# File: src/__init__.py
+# FE-AI Package Initialization
+
+"""
+FE-AI: Federated Explainable AI System for Scalable Gait-Based Neurological Disease Detection
+
+This package provides a comprehensive AI system for analyzing gait patterns
+and detecting neurological diseases using federated learning and explainable AI techniques.
+"""
+
+__version__ = "2.3.1"
+__author__ = "FE-AI Development Team"
+__email__ = "dev@fe-ai-system.com"
+__license__ = "MIT"
+
+import logging
+import sys
+from pathlib import Path
+
+# Add project root to Python path
+project_root = Path(__file__).parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler(project_root / "logs" / "fe_ai.log", mode='a')
+    ]
+)
+
+# Create logs directory if it doesn't exist
+(project_root / "logs").mkdir(exist_ok=True)
+
+logger = logging.getLogger(__name__)
+logger.info(f"FE-AI System v{__version__} initialized")
+
+# Import core components
+try:
+    from .utils.config import config
+    from .utils.logger import setup_logger, get_logger
+    
+    logger.info("Core utilities loaded successfully")
+except ImportError as e:
+    logger.warning(f"Could not import core utilities: {e}")
+
+# System information
+SYSTEM_INFO = {
+    "name": "FE-AI Gait Disease Detection System",
+    "version": __version__,
+    "description": "Federated Explainable AI for Neurological Disease Detection",
+    "components": [
+        "Gait Detection (CNN-BiLSTM)",
+        "Disease Classification (Transformer + XGBoost)", 
+        "Federated Learning (Flower)",
+        "Explainable AI (SHAP + LIME)",
+        "Clinical Dashboard (Streamlit)"
+    ],
+    "supported_diseases": [
+        "Parkinson's Disease",
+        "Huntington's Disease",
+        "Ataxia",
+        "Multiple Sclerosis",
+        "Normal Gait"
+    ],
+    "target_accuracy": ">96%",
+    "privacy_preserving": True,
+    "real_time_analysis": True
+}
+
+def get_system_info():
+    """Get system information"""
+    return SYSTEM_INFO
+
+def get_version():
+    """Get version string"""
+    return __version__
+
+# All module imports for easier access
+__all__ = [
+    "__version__",
+    "__author__", 
+    "__email__",
+    "__license__",
+    "SYSTEM_INFO",
+    "get_system_info",
+    "get_version"
+]

@@ -1,0 +1,29 @@
+# File: deployment/kubernetes/pvc.yaml
+# Persistent Volume Claims for FE-AI
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fe-ai-data-pvc
+  namespace: fe-ai
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: fast-ssd
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: fe-ai-logs-pvc
+  namespace: fe-ai
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard

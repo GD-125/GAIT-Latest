@@ -1,0 +1,35 @@
+# File: deployment/kubernetes/ingress.yaml
+# Kubernetes ingress for FE-AI
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fe-ai-ingress
+  namespace: fe-ai
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+spec:
+  tls:
+  - hosts:
+    - fe-ai.yourdomain.com
+    secretName: fe-ai-tls
+  rules:
+  - host: fe-ai.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: fe-ai-service
+            port:
+              number: 80

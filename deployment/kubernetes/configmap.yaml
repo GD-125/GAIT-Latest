@@ -1,0 +1,52 @@
+# File: deployment/kubernetes/configmap.yaml
+# ConfigMap for FE-AI configuration
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fe-ai-config
+  namespace: fe-ai
+data:
+  config.yaml: |
+    app:
+      name: "FE-AI Gait Disease Detection"
+      version: "2.3.1"
+      environment: "production"
+      debug: false
+    
+    server:
+      host: "0.0.0.0"
+      port: 8501
+      max_upload_size: 100
+      session_timeout: 7200
+      enable_cors: true
+    
+    database:
+      mongodb:
+        host: "fe-ai-mongodb"
+        port: 27017
+        database: "fe_ai_system"
+        ssl_enabled: false
+    
+    cache:
+      redis:
+        host: "fe-ai-redis"
+        port: 6379
+        database: 0
+        ssl_enabled: false
+    
+    federated_learning:
+      enabled: true
+      server_address: "0.0.0.0:8080"
+      num_rounds: 50
+      min_fit_clients: 3
+    
+    security:
+      authentication:
+        enabled: true
+      encryption:
+        data_at_rest: true
+        data_in_transit: true
+    
+    logging:
+      level: "INFO"
