@@ -15,7 +15,6 @@ from pathlib import Path
 from src.models.gait_detector import CNNBiLSTMGaitDetector
 from src.models.disease_classifier import TransformerDiseaseClassifier
 from src.utils.config import config
-from src.data.data_loader import DataLoader
 from src.preprocessing.signal_processor import SignalProcessor
 
 logger = logging.getLogger(__name__)
@@ -44,7 +43,6 @@ class FederatedClient(fl.client.NumPyClient):
         self.device = device
         
         # Initialize components
-        self.data_loader = DataLoader()
         self.signal_processor = SignalProcessor()
         
         # Load local data
@@ -60,6 +58,24 @@ class FederatedClient(fl.client.NumPyClient):
         self.learning_rate = config.get('federated_learning.learning_rate', 0.001)
         
         logger.info(f"Federated client {client_id} initialized with {len(self.X_train)} training samples")
+    
+    def _validate_data(self, data: pd.DataFrame) -> bool:
+        """Validate that data has required columns"""
+        required_cols = ['accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z']
+        
+        # Check if all required columns exist
+        missing_cols = [col for col in required_cols if col not in data.columns]
+        
+        if missing_cols:
+            logger.warning(f"Missing columns: {missing_cols}")
+            return False
+        
+        # Check for sufficient data
+        if len(data) < 250:  # Need at least one window
+            logger.warning(f"Insufficient data: {len(data)} rows (need at least 250)")
+            return False
+        
+        return True
     
     def _load_local_data(self) -> Tuple[np.ndarray, np.ndarray]:
         """Load and preprocess local training data"""
@@ -80,46 +96,94 @@ class FederatedClient(fl.client.NumPyClient):
                 return self._generate_dummy_data()
             
             # Validate data
-            validation_results = self.data_loader.validate_data(data)
-            if not validation_results['is_valid']:
+            if not self._validate_data(data):
                 logger.warning("Data validation failed, using dummy data")
                 return self._generate_dummy_data()
             
             # Process data
-            processed_data = self.signal_processor.process_data(
+            processed_result = self.signal_processor.process_data(
                 data,
                 denoise=True,
                 normalize=True,
-                segment=True,
-                extract_features=True,
-                window_size=5,
-                overlap=25
+                sampling_rate=50
             )
             
+            processed_data = processed_result['processed_data']
+            
+            # Create windows for different model types
             if self.model_type == "gait_detector":
-                # Use segments for gait detection
-                X = np.array(processed_data.get('segments', []))
-                # Generate binary labels (1 for gait, 0 for non-gait)
-                y = np.random.choice([0, 1], len(X), p=[0.3, 0.7])
-            
+                X, y = self._create_gait_windows(processed_data)
             elif self.model_type == "disease_classifier":
-                # Use features for disease classification
-                features_df = processed_data.get('features', pd.DataFrame())
-                X = features_df.values
-                
-                # Generate disease labels
-                diseases = ['Parkinson', 'Huntington', 'Ataxia', 'MS', 'Normal']
-                y = np.random.choice(range(len(diseases)), len(X))
-            
+                X, y = self._create_disease_features(processed_data)
             else:
                 logger.error(f"Unknown model type: {self.model_type}")
                 return self._generate_dummy_data()
             
+            logger.info(f"Loaded local data: X shape {X.shape}, y shape {y.shape}")
             return X, y
             
         except Exception as e:
             logger.error(f"Error loading local data: {str(e)}")
             return self._generate_dummy_data()
+    
+    def _create_gait_windows(self, data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
+        """Create sliding windows for gait detection"""
+        sensor_cols = ['accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z']
+        sensor_data = data[sensor_cols].values
+        
+        sequence_length = 250  # 5 seconds at 50Hz
+        stride = 125  # 50% overlap
+        
+        windows = []
+        for i in range(0, len(sensor_data) - sequence_length + 1, stride):
+            window = sensor_data[i:i + sequence_length]
+            windows.append(window)
+        
+        X = np.array(windows)
+        # Generate binary labels (in real scenario, these would be from annotations)
+        y = np.random.choice([0, 1], len(X), p=[0.3, 0.7])
+        
+        return X, y
+    
+    def _create_disease_features(self, data: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
+        """Create feature vectors for disease classification"""
+        # Extract features using sliding windows
+        sensor_cols = ['accel_x', 'accel_y', 'accel_z', 'gyro_x', 'gyro_y', 'gyro_z']
+        sensor_data = data[sensor_cols].values
+        
+        window_size = 250
+        stride = 125
+        
+        features_list = []
+        for i in range(0, len(sensor_data) - window_size + 1, stride):
+            window = sensor_data[i:i + window_size]
+            
+            # Extract simple statistical features per window
+            window_features = []
+            for axis in range(6):
+                axis_data = window[:, axis]
+                window_features.extend([
+                    np.mean(axis_data),
+                    np.std(axis_data),
+                    np.min(axis_data),
+                    np.max(axis_data),
+                    np.median(axis_data)
+                ])
+            
+            features_list.append(window_features)
+        
+        X = np.array(features_list)
+        
+        # Pad or truncate to 247 features
+        if X.shape[1] < 247:
+            X = np.pad(X, ((0, 0), (0, 247 - X.shape[1])), mode='constant')
+        elif X.shape[1] > 247:
+            X = X[:, :247]
+        
+        # Generate disease labels (5 classes)
+        y = np.random.choice(range(5), len(X))
+        
+        return X, y
     
     def _generate_dummy_data(self) -> Tuple[np.ndarray, np.ndarray]:
         """Generate dummy training data"""
@@ -362,3 +426,62 @@ class FederatedClient(fl.client.NumPyClient):
             return 0.3, 0.85  # Return dummy values
 
 
+def start_client(
+    client_id: str,
+    data_path: str,
+    server_address: str = "localhost:8080",
+    model_type: str = "gait_detector"
+):
+    """
+    Start a federated learning client
+    
+    Args:
+        client_id: Unique client identifier
+        data_path: Path to local training data
+        server_address: Server address to connect to
+        model_type: Type of model to train
+    """
+    
+    logger.info(f"Starting federated client {client_id}")
+    logger.info(f"Connecting to server at {server_address}")
+    
+    # Create client instance
+    client = FederatedClient(
+        client_id=client_id,
+        data_path=data_path,
+        model_type=model_type
+    )
+    
+    # Start Flower client
+    fl.client.start_numpy_client(
+        server_address=server_address,
+        client=client
+    )
+
+
+if __name__ == "__main__":
+    # Example usage
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="FE-AI Federated Learning Client")
+    parser.add_argument("--client_id", type=str, required=True, help="Unique client ID")
+    parser.add_argument("--data_path", type=str, required=True, help="Path to training data")
+    parser.add_argument("--server", type=str, default="localhost:8080", help="Server address")
+    parser.add_argument("--model_type", type=str, default="gait_detector", 
+                       choices=["gait_detector", "disease_classifier"])
+    
+    args = parser.parse_args()
+    
+    # Setup logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    # Start client
+    start_client(
+        client_id=args.client_id,
+        data_path=args.data_path,
+        server_address=args.server,
+        model_type=args.model_type
+    )

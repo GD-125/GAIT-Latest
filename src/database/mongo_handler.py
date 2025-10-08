@@ -58,7 +58,7 @@ class MongoHandler:
                                f"{self.connection_params['password']}@")
             else:
                 uri_parts.append("mongodb://")
-                        uri_parts.append(f"{self.connection_params['host']}:{self.connection_params['port']}")
+            uri_parts.append(f"{self.connection_params['host']}:{self.connection_params['port']}")
             uri_parts.append(f"/{self.connection_params['database']}")
             
             # Add connection options
@@ -419,5 +419,3 @@ def get_database():
 def get_async_database():
     """Get async database instance"""
     return mongo_handler.async_db
-
-            

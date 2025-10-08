@@ -4,7 +4,10 @@
 import hashlib
 import secrets
 import base64
-from typing import Any, Dict, List, Optional
+import os
+import time
+import re
+from typing import Any, Dict, List, Optional, Tuple
 import json
 import numpy as np
 import pandas as pd
@@ -44,8 +47,6 @@ def verify_password(password: str, hashed: str, salt: str) -> bool:
 
 def sanitize_filename(filename: str) -> str:
     """Sanitize filename for safe storage"""
-    import re
-    
     # Remove or replace dangerous characters
     filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
     
@@ -61,9 +62,7 @@ def sanitize_filename(filename: str) -> str:
 
 def validate_email(email: str) -> bool:
     """Validate email address format"""
-    import re
-    
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}
+    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     return re.match(pattern, email) is not None
 
 def serialize_numpy(obj: Any) -> Any:

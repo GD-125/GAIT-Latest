@@ -7,7 +7,7 @@ from scipy import signal, stats
 from scipy.fft import fft, fftfreq
 from sklearn.decomposition import PCA
 from sklearn.feature_selection import SelectKBest, f_classif
-import pywavelets as pywt
+import pywt
 from typing import Dict, List, Tuple, Optional, Any
 import logging
 import warnings
@@ -279,5 +279,21 @@ class FeatureExtractor:
             # Low frequency (0-2 Hz)
             low_freq_mask = (positive_frequencies >= 0) & (positive_frequencies <= 2)
             features[f'{prefix}_power_0_2hz'] = float(np.sum(power_spectrum[low_freq_mask]))
-            
-            # G
+                
+            # Mid frequency (2-5 Hz)
+            mid_freq_mask = (positive_frequencies > 2) & (positive_frequencies <= 5)
+            features[f'{prefix}_power_2_5hz'] = float(np.sum(power_spectrum[mid_freq_mask]))
+    
+            # High frequency (5+ Hz)
+            high_freq_mask = (positive_frequencies > 5)
+            features[f'{prefix}_power_5hz_up'] = float(np.sum(power_spectrum[high_freq_mask]))
+    
+        except Exception as e:
+            logger.warning(f"Error extracting frequency domain features for {prefix}: {str(e)}")
+            # Return zeros for failed features
+            features.update({f'{prefix}_{feat}': 0.0 for feat in [
+                'spectral_centroid', 'spectral_spread', 'spectral_rolloff', 'spectral_flux',
+                'dominant_frequency', 'dominant_frequency_power', 'power_0_2hz', 'power_2_5hz', 'power_5hz_up'
+            ]})
+    
+        return features

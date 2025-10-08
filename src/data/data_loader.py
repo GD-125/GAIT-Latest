@@ -276,4 +276,14 @@ class SignalProcessor:
             data: Input sensor data
             denoise: Apply noise filtering
             normalize: Apply normalization
-            segment: Create
+            segment: Create segments
+            extract_features: Extract features from segments
+            window_size: Size of window for segmentation
+            overlap: Overlap between windows
+        
+        Returns:
+            Dictionary with processed data and features
+        """
+        # TODO: Implement preprocessing steps
+        # For now, just return the input data as a placeholder
+        return {"processed_data": data}

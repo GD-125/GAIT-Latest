@@ -1,67 +1,66 @@
 # File: src/utils/logger.py
-# Logging setup for FE-AI System
+# Logging utilities
 
 import logging
 import sys
 from pathlib import Path
-from datetime import datetime
-import os
+from logging.handlers import RotatingFileHandler
+from typing import Optional
 
-def setup_logger(name: str = "FE-AI", level: str = "INFO") -> logging.Logger:
+def setup_logger(
+    name: str,
+    log_file: Optional[str] = None,
+    level: int = logging.INFO,
+    format_string: Optional[str] = None
+) -> logging.Logger:
     """
-    Set up comprehensive logging for the FE-AI system
+    Setup and configure a logger
     
     Args:
         name: Logger name
-        level: Logging level (DEBUG, INFO, WARNING, ERROR)
-        
+        log_file: Path to log file (optional)
+        level: Logging level
+        format_string: Custom format string
+    
     Returns:
         Configured logger instance
     """
     
-    # Create logs directory if it doesn't exist
-    log_dir = Path("logs")
-    log_dir.mkdir(exist_ok=True)
-    
     # Create logger
     logger = logging.getLogger(name)
-    logger.setLevel(getattr(logging, level.upper()))
+    logger.setLevel(level)
     
-    # Clear existing handlers
-    for handler in logger.handlers[:]:
-        logger.removeHandler(handler)
+    # Remove existing handlers
+    logger.handlers.clear()
     
-    # Create formatters
-    detailed_formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
-    )
+    # Default format
+    if format_string is None:
+        format_string = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     
-    simple_formatter = logging.Formatter(
-        '%(asctime)s - %(levelname)s - %(message)s'
-    )
+    formatter = logging.Formatter(format_string)
     
     # Console handler
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(simple_formatter)
+    console_handler.setLevel(level)
+    console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
-    # File handler for all logs
-    log_file = log_dir / f"fe_ai_{datetime.now().strftime('%Y%m%d')}.log"
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(detailed_formatter)
-    logger.addHandler(file_handler)
-    
-    # Error handler for errors only
-    error_file = log_dir / f"fe_ai_errors_{datetime.now().strftime('%Y%m%d')}.log"
-    error_handler = logging.FileHandler(error_file)
-    error_handler.setLevel(logging.ERROR)
-    error_handler.setFormatter(detailed_formatter)
-    logger.addHandler(error_handler)
+    # File handler (if log_file specified)
+    if log_file:
+        log_path = Path(log_file)
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        file_handler = RotatingFileHandler(
+            log_file,
+            maxBytes=10*1024*1024,  # 10MB
+            backupCount=5
+        )
+        file_handler.setLevel(level)
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
     
     return logger
 
 def get_logger(name: str) -> logging.Logger:
-    """Get logger instance"""
+    """Get an existing logger by name"""
     return logging.getLogger(name)

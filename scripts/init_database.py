@@ -16,6 +16,8 @@ from src.utils.config import config
 from src.utils.logger import setup_logger
 import logging
 
+# ...existing code...
+
 def main():
     """Initialize FE-AI database"""
     
@@ -55,7 +57,7 @@ def main():
         
         logger.info("Database initialization completed successfully")
         return True
-        
+
     except Exception as e:
         logger.error(f"Database initialization failed: {str(e)}")
         return False

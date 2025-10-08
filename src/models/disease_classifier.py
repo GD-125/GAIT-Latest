@@ -795,8 +795,6 @@ class DiseaseClassifier:
     
     def save_model(self, filepath: str):
         """Save trained models to file"""
-    def save_model(self, filepath: str):
-        """Save trained models to file"""
         save_dict = {
             'transformer_state_dict': self.transformer_model.state_dict() if self.transformer_model else None,
             'xgboost_model': self.xgboost_model,
